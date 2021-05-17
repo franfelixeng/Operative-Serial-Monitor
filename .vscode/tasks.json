@@ -1,0 +1,70 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "cppbuild",
+			"label": "C/C++: gcc build active file",
+			"command": "/usr/bin/gcc",
+			"args": [
+				"-g",
+				"`pkg-config",
+				"--cflags",
+				"gtk+-3.0`",
+				"-o",
+				"${workspaceFolder}/main",
+				"${workspaceFolder}/main.c",
+				"${workspaceFolder}/arduino-serial-lib.c",
+				"`pkg-config",
+				"--libs",
+				"gtk+-3.0`",
+				"-rdynamic"
+			],
+			"options": {
+				"cwd": "${fileDirname}"
+			},
+			"problemMatcher": [
+				"$gcc"
+			],
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"detail": "compiler: /usr/bin/gcc"
+		},
+		{
+			"type": "cppbuild",
+			"label": "C/C++: simple build",
+			"command": "/usr/bin/gcc",
+			"args": [
+				"`pkg-config",
+				"--cflags",
+				"gtk+-3.0`",
+				"-o",
+				"${workspaceFolder}/main",
+				"${workspaceFolder}/main.c",
+				"${workspaceFolder}/arduino-serial-lib.c",
+				"`pkg-config",
+				"--libs",
+				"gtk+-3.0`",
+				"-rdynamic"
+			],
+			"options": {
+				"cwd": "${fileDirname}"
+			},
+			"problemMatcher": [
+				"$gcc"
+			],
+			"detail": "compiler: /usr/bin/gcc"
+		},
+		{
+			"type": "shell",
+			"label": "run",
+			"command": "${workspaceFolder}/./main",
+			"dependsOn": "C/C++: simple build",
+			"dependsOrder": "sequence",
+			"problemMatcher": [
+				"$gcc"
+			]
+		}
+	],
+}
