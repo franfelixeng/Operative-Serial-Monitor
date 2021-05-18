@@ -29,7 +29,7 @@ int serialport_init(const char *serialport, int baud)
     struct termios toptions;
     int fd;
 
-    fd = open(serialport, O_RDWR);
+    fd = open(serialport, O_RDWR | O_NONBLOCK);
 
     if (fd == -1)
     {
@@ -87,8 +87,8 @@ int serialport_init(const char *serialport, int baud)
     toptions.c_cflag &= ~CSIZE;
     toptions.c_cflag |= CS8;
     // no flow control
-    toptions.c_cflag &= ~CRTSCTS;
-
+    //toptions.c_cflag &= ~CRTSCTS;
+    toptions.c_cflag |= CRTSCTS;
     //toptions.c_cflag &= ~HUPCL; // disable hang-up-on-close to avoid reset
 
     toptions.c_cflag |= CREAD | CLOCAL;          // turn on READ & ignore ctrl lines
@@ -100,12 +100,8 @@ int serialport_init(const char *serialport, int baud)
 
     // see: http://unixwiz.net/techtips/termios-vmin-vtime.html
     //TODO
-    toptions.c_cc[VMIN] = 1;
+    toptions.c_cc[VMIN] = 0;
     toptions.c_cc[VTIME] = 0;
-    // toptions.c_cc[VINTR] = 1;
-    // toptions.c_cc[VQUIT] = 0;
-    // toptions.c_cc[VSUSP] = 0;
-    //toptions.c_cc[VTIME] = 20;
 
     tcsetattr(fd, TCSANOW, &toptions);
     if (tcsetattr(fd, TCSAFLUSH, &toptions) < 0)
@@ -159,7 +155,8 @@ int serialport_read(int fd)
     }
     else if (n == 0)
     {
-        printf("fim eof\n");
+        //printf("fim eof\n");
+        b[0] = '\0';
     }
 
     return (int)b[0];

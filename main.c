@@ -17,12 +17,13 @@ GtkComboBoxText *cbt_ports;
 GtkComboBoxText *cbt_baudrate;
 GtkButton *button_connect;
 GtkTextView *tv_screen;
+GtkTextBuffer *buffer_screen;
 GtkBuilder *builder;
 
 int fd = -1;
 char *port = NULL;
 int baudrate = 0;
-pthread_t ref_runRead;
+guint id_idle_read;
 
 void error(char *msg)
 {
@@ -60,51 +61,48 @@ void on_cbt_baud_rate_changed()
     baudrate = (int)strtol(str_baud, (char **)strchr(str_baud, ' '), 10);
 }
 
-// void connection_made()
-// {
-//     gtk_button_set_image(button_connect, im_disconnect);
-//     gtk_button_set_label(button_connect, "connected");
-// }
-
-void *runRead_theread(void *arg)
-{
-    GtkTextView *screen = (GtkTextView *)arg;
-    char serialPort[21] = "/dev/";
-
-    fd = serialport_init(strncat(serialPort, port, 20), baudrate);
-    if (fd == -1)
-    {
-        error("couldn't open port");
-        pthread_exit(NULL);
-    }
-    printf("opened port %s\n", serialPort);
-    serialport_flush(fd);
-
+// run in gtk_main() environment
+gboolean on_read_usb(gpointer data)
+{     
     char c[2];
+    int i = 0; //so as not to crash the interface with very large text
 
-    GtkTextBuffer *buffer_screen = gtk_text_view_get_buffer(screen);
-    //GtkTextMark *mark_screen = gtk_text_buffer_get_insert(buffer_screen);
-
-    //GtkTextIter iter_screen;
-
-    //TODO,corrigir erro, passar algum tipo de handler parao gtk inserir o char, verificar Gmutex
-    for (int i = 0; 1; i++)
+    while ((c[0] = serialport_read(fd)) != '\0' && i < 20)
     {
-        c[0] = (char)serialport_read(fd);
         c[1] = '\0';
-        //gtk_text_buffer_get_iter_at_mark(buffer_screen, &iter_screen, mark_screen);
-        //gtk_text_buffer_insert(buffer_screen, &iter_screen, c, -1);
-        gtk_text_buffer_insert_interactive_at_cursor(buffer_screen,c, -1,True);
+        gtk_text_buffer_insert_interactive_at_cursor(buffer_screen, c, -1, True);
+        i++;
     }
+    return True;
 }
+
 void on_button_connect_clicked()
 {
-    int res_thread;
-
-    pid_t child_connect;
-    if (port != NULL && baudrate != 0)
+    char serialPort[21] = "/dev/";
+    if (fd == -1)
     {
-        res_thread = pthread_create(&ref_runRead, NULL, runRead_theread, tv_screen);
+        fd = serialport_init(strncat(serialPort, port, 20), baudrate);
+        if (fd == -1)
+        {
+            error("couldn't open port");
+            //TODO maybe show info
+            return;
+        }
+        printf("opened port %s\n", serialPort);
+        gtk_button_set_image(button_connect, im_disconnect);
+        gtk_button_set_label(button_connect, "connected");
+        id_idle_read = g_idle_add(on_read_usb, NULL);
+    }
+    else if (fd != -1)
+    { 
+        g_source_remove(id_idle_read);
+        if (serialport_close(fd) != 0)
+        {
+            error("don't close");
+        }
+        gtk_button_set_image(button_connect, im_connect);
+        gtk_button_set_label(button_connect, "connect");
+        fd = -1;
     }
 }
 
@@ -163,21 +161,15 @@ int main(int argc, char *argv[])
     cbt_baudrate = (GtkComboBoxText *)GTK_WIDGET(gtk_builder_get_object(builder, "cbt_baud_rate"));
     button_connect = (GtkButton *)GTK_WIDGET(gtk_builder_get_object(builder, "button_connect"));
     tv_screen = (GtkTextView *)GTK_WIDGET(gtk_builder_get_object(builder, "tv_screen"));
-
+    buffer_screen = gtk_text_view_get_buffer(tv_screen);
     im_connect = GTK_WIDGET(gtk_builder_get_object(builder, "im_connect"));
     im_disconnect = GTK_WIDGET(gtk_builder_get_object(builder, "im_disconnect"));
 
     g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
-
     gtk_builder_connect_signals(builder, NULL);
-
     refresh_ports();
-
     gtk_widget_show(window);
-
     gtk_main();
 
     return EXIT_SUCCESS;
-
-    return 0;
 }
