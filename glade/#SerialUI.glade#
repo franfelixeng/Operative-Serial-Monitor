@@ -23,6 +23,7 @@
           <object class="GtkTextView" id="tv_screen">
             <property name="visible">True</property>
             <property name="can_focus">True</property>
+            <property name="double_buffered">False</property>
             <property name="halign">start</property>
             <property name="valign">start</property>
             <property name="hexpand">True</property>

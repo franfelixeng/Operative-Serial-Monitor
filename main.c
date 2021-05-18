@@ -5,6 +5,7 @@
 #include <signal.h>
 #include <gtk/gtk.h>
 #include <gtk/gtkx.h>
+#include <pthread.h>
 
 #include "arduino-serial-lib.h"
 
@@ -15,11 +16,13 @@ GtkWidget *im_disconnect;
 GtkComboBoxText *cbt_ports;
 GtkComboBoxText *cbt_baudrate;
 GtkButton *button_connect;
+GtkTextView *tv_screen;
 GtkBuilder *builder;
 
 int fd = -1;
 char *port = NULL;
 int baudrate = 0;
+pthread_t ref_runRead;
 
 void error(char *msg)
 {
@@ -57,52 +60,51 @@ void on_cbt_baud_rate_changed()
     baudrate = (int)strtol(str_baud, (char **)strchr(str_baud, ' '), 10);
 }
 
-void connection_made()
-{
-    gtk_button_set_image(button_connect, im_disconnect);
-    gtk_button_set_label(button_connect, "connected");
+// void connection_made()
+// {
+//     gtk_button_set_image(button_connect, im_disconnect);
+//     gtk_button_set_label(button_connect, "connected");
+// }
 
-    if (fork() == 0)
+void *runRead_theread(void *arg)
+{
+    GtkTextView *screen = (GtkTextView *)arg;
+    char serialPort[21] = "/dev/";
+
+    fd = serialport_init(strncat(serialPort, port, 20), baudrate);
+    if (fd == -1)
     {
-        char c;
-        while (1)
-        {
-            c = (char)serialport_read(fd);
-            printf("%c", c);
-        }
+        error("couldn't open port");
+        pthread_exit(NULL);
     }
-}
+    printf("opened port %s\n", serialPort);
+    serialport_flush(fd);
 
+    char c[2];
 
-void* runRead_theread(void* arg)
-{
-    
+    GtkTextBuffer *buffer_screen = gtk_text_view_get_buffer(screen);
+    //GtkTextMark *mark_screen = gtk_text_buffer_get_insert(buffer_screen);
+
+    //GtkTextIter iter_screen;
+
+    //TODO,corrigir erro, passar algum tipo de handler parao gtk inserir o char, verificar Gmutex
+    for (int i = 0; 1; i++)
+    {
+        c[0] = (char)serialport_read(fd);
+        c[1] = '\0';
+        //gtk_text_buffer_get_iter_at_mark(buffer_screen, &iter_screen, mark_screen);
+        //gtk_text_buffer_insert(buffer_screen, &iter_screen, c, -1);
+        gtk_text_buffer_insert_interactive_at_cursor(buffer_screen,c, -1,True);
+    }
 }
 void on_button_connect_clicked()
 {
+    int res_thread;
 
-    char serialPort[21] = "/dev/";
     pid_t child_connect;
     if (port != NULL && baudrate != 0)
     {
-        if ((child_connect = fork()) == 0)
-        {
-            fd = serialport_init(strncat(serialPort, port, 20), baudrate);
-            if (fd == -1)
-            {
-                error("couldn't open port");
-                return;
-            }
-            printf("opened port %s\n", serialPort);
-            serialport_flush(fd);
-            exit(0);
-        }
-        else if (child_connect < 0)
-        {
-            perror("fork");
-            exit(1);
-        }
-        g_child_watch_add(child_connect, connection_made, NULL);
+        res_thread = pthread_create(&ref_runRead, NULL, runRead_theread, tv_screen);
     }
 }
 
@@ -160,6 +162,7 @@ int main(int argc, char *argv[])
     cbt_ports = (GtkComboBoxText *)GTK_WIDGET(gtk_builder_get_object(builder, "cbt_ports"));
     cbt_baudrate = (GtkComboBoxText *)GTK_WIDGET(gtk_builder_get_object(builder, "cbt_baud_rate"));
     button_connect = (GtkButton *)GTK_WIDGET(gtk_builder_get_object(builder, "button_connect"));
+    tv_screen = (GtkTextView *)GTK_WIDGET(gtk_builder_get_object(builder, "tv_screen"));
 
     im_connect = GTK_WIDGET(gtk_builder_get_object(builder, "im_connect"));
     im_disconnect = GTK_WIDGET(gtk_builder_get_object(builder, "im_disconnect"));

@@ -20,13 +20,16 @@
         <property name="can_focus">False</property>
         <property name="orientation">vertical</property>
         <child>
-          <object class="GtkTextView">
+          <object class="GtkTextView" id="tv_text_screen">
             <property name="visible">True</property>
             <property name="can_focus">True</property>
             <property name="halign">start</property>
             <property name="valign">start</property>
             <property name="hexpand">True</property>
             <property name="vexpand">True</property>
+            <property name="editable">False</property>
+            <property name="cursor_visible">False</property>
+            <property name="accepts_tab">False</property>
           </object>
           <packing>
             <property name="expand">False</property>
@@ -120,7 +123,7 @@
                 <property name="hexpand">True</property>
                 <property name="image">im_connect</property>
                 <property name="always_show_image">True</property>
-                <signal name="clicked" handler="on_button_connect_clicked" after="yes" swapped="no"/>
+                <signal name="clicked" handler="on_button_connect_clicked" swapped="no"/>
               </object>
               <packing>
                 <property name="expand">False</property>
