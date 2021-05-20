@@ -23,7 +23,6 @@ GtkBuilder *builder;
 int fd = -1;
 char *port = NULL;
 int baudrate = 0;
-guint id_idle_read;
 pthread_t ref_reading;
 
 void error(char *msg)
@@ -64,10 +63,9 @@ void on_cbt_baud_rate_changed()
 
 // run in gtk_main() environment
 
-char text[1024];
+
 gboolean on_read_usb(gpointer data)
 {
-    char c[] = {'C', 'h', 'i', 'b', 'a', 't', 'o', 't', 'e', 'x', ' ', 'F', 'e', 'l', 'i', 'x', '\r', '\n', '\0'};
     //g_strdelimit(c,"\r\n",'\n');
     //gtk_text_buffer_insert_interactive_at_cursor(buffer_screen, c, -1, True);
     gtk_text_buffer_insert_at_cursor(buffer_screen, (gchar *)data, -1);
@@ -78,19 +76,20 @@ gboolean on_read_usb(gpointer data)
 void *thread_reading(void *arg)
 {
     int i = 0;
+    char text[1024];
+    text[1023] = '\0';
 
     for (;;)
     {
-        while ((text[i] = serialport_read(fd)) != '\0')
+        while ((text[i] = serialport_read(fd)) != '\0' && i < 1023)
         {
             i++;
         }
         if (i > 0)
         {
-            id_idle_read = g_idle_add(on_read_usb, text);
+            g_idle_add(on_read_usb, text);
             i = 0;
         }
-        usleep(100000);
     }
 }
 
@@ -115,11 +114,11 @@ void on_button_connect_clicked()
     }
     else if (fd != -1)
     {
-        // g_source_remove(id_idle_read);
         if (serialport_close(fd) != 0)
         {
             error("don't close");
         }
+        pthread_cancel(ref_reading);
         gtk_button_set_image(button_connect, im_connect);
         gtk_button_set_label(button_connect, "connect");
         fd = -1;

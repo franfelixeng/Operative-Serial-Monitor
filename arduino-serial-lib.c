@@ -29,7 +29,7 @@ int serialport_init(const char *serialport, int baud)
     struct termios toptions;
     int fd;
 
-    fd = open(serialport, O_RDWR, O_NONBLOCK);
+    fd = open(serialport, O_RDWR);
 
     if (fd == -1)
     {
@@ -103,9 +103,9 @@ int serialport_init(const char *serialport, int baud)
     toptions.c_oflag &= ~OPOST; 
 
     // see: http://unixwiz.net/techtips/termios-vmin-vtime.html
-    //TODO
+    
     toptions.c_cc[VMIN] = 0;
-    toptions.c_cc[VTIME] = 0;
+    toptions.c_cc[VTIME] = 1;//needed to solve problems like \r\n for example
 
     tcsetattr(fd, TCSANOW, &toptions);
     if (tcsetattr(fd, TCSAFLUSH, &toptions) < 0)

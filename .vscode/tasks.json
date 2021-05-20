@@ -11,7 +11,7 @@
 				"--cflags",
 				"gtk+-3.0`",
 				"-o",
-				"${workspaceFolder}/main",
+				"${workspaceFolder}/.build/main",
 				"${workspaceFolder}/main.c",
 				"${workspaceFolder}/arduino-serial-lib.c",
 				"`pkg-config",
@@ -40,7 +40,7 @@
 				"--cflags",
 				"gtk+-3.0`",
 				"-o",
-				"${workspaceFolder}/main",
+				"${workspaceFolder}/.build/main",
 				"${workspaceFolder}/main.c",
 				"${workspaceFolder}/arduino-serial-lib.c",
 				"`pkg-config",
@@ -59,7 +59,7 @@
 		{
 			"type": "shell",
 			"label": "run",
-			"command": "${workspaceFolder}/main",
+			"command": "${workspaceFolder}/.build/main",
 			"dependsOn": "C/C++: simple build",
 			"dependsOrder": "sequence",
 			"problemMatcher": [

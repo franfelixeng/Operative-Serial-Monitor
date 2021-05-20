@@ -35,7 +35,6 @@
                 <property name="double_buffered">False</property>
                 <property name="pixels_above_lines">3</property>
                 <property name="pixels_below_lines">3</property>
-                <property name="pixels_inside_wrap">1</property>
                 <property name="editable">False</property>
                 <property name="wrap_mode">word-char</property>
                 <property name="cursor_visible">False</property>
