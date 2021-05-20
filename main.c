@@ -24,6 +24,7 @@ int fd = -1;
 char *port = NULL;
 int baudrate = 0;
 guint id_idle_read;
+pthread_t ref_reading;
 
 void error(char *msg)
 {
@@ -62,25 +63,43 @@ void on_cbt_baud_rate_changed()
 }
 
 // run in gtk_main() environment
-gboolean on_read_usb(gpointer data)
-{     
-    char c[2];
-    int i = 0; //so as not to crash the interface with very large text
 
-    while ((c[0] = serialport_read(fd)) != '\0' && i < 20)
+char text[1024];
+gboolean on_read_usb(gpointer data)
+{
+    char c[] = {'C', 'h', 'i', 'b', 'a', 't', 'o', 't', 'e', 'x', ' ', 'F', 'e', 'l', 'i', 'x', '\r', '\n', '\0'};
+    //g_strdelimit(c,"\r\n",'\n');
+    //gtk_text_buffer_insert_interactive_at_cursor(buffer_screen, c, -1, True);
+    gtk_text_buffer_insert_at_cursor(buffer_screen, (gchar *)data, -1);
+
+    return False;
+}
+
+void *thread_reading(void *arg)
+{
+    int i = 0;
+
+    for (;;)
     {
-        c[1] = '\0';
-        gtk_text_buffer_insert_interactive_at_cursor(buffer_screen, c, -1, True);
-        i++;
+        while ((text[i] = serialport_read(fd)) != '\0')
+        {
+            i++;
+        }
+        if (i > 0)
+        {
+            id_idle_read = g_idle_add(on_read_usb, text);
+            i = 0;
+        }
+        usleep(100000);
     }
-    return True;
 }
 
 void on_button_connect_clicked()
 {
-    char serialPort[21] = "/dev/";
+
     if (fd == -1)
     {
+        char serialPort[21] = "/dev/";
         fd = serialport_init(strncat(serialPort, port, 20), baudrate);
         if (fd == -1)
         {
@@ -91,11 +110,12 @@ void on_button_connect_clicked()
         printf("opened port %s\n", serialPort);
         gtk_button_set_image(button_connect, im_disconnect);
         gtk_button_set_label(button_connect, "connected");
-        id_idle_read = g_idle_add(on_read_usb, NULL);
+
+        pthread_create(&ref_reading, NULL, thread_reading, NULL);
     }
     else if (fd != -1)
-    { 
-        g_source_remove(id_idle_read);
+    {
+        // g_source_remove(id_idle_read);
         if (serialport_close(fd) != 0)
         {
             error("don't close");
@@ -141,6 +161,8 @@ void on_entry_port_icon_press(GtkEntry *entry, GtkEntryIconPosition icon_pos,
     }
 }
 
+void css_set(GtkCssProvider *cssProvider, GtkWidget *g_widgete);
+
 int main(int argc, char *argv[])
 {
 
@@ -154,6 +176,8 @@ int main(int argc, char *argv[])
     char *port_selected;
 
     builder = gtk_builder_new_from_file("glade/SerialUI.glade");
+    GtkCssProvider *provider = gtk_css_provider_new();
+    gtk_css_provider_load_from_path(GTK_CSS_PROVIDER(provider), "glade/styles.css", NULL);
 
     window = GTK_WIDGET(gtk_builder_get_object(builder, "w_fist"));
 
@@ -168,8 +192,17 @@ int main(int argc, char *argv[])
     g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
     gtk_builder_connect_signals(builder, NULL);
     refresh_ports();
+    css_set(provider, (GtkWidget *)tv_screen);
     gtk_widget_show(window);
     gtk_main();
 
     return EXIT_SUCCESS;
+}
+
+void css_set(GtkCssProvider *cssProvider, GtkWidget *g_widgete)
+{
+    GtkStyleContext *context = gtk_widget_get_style_context(g_widgete);
+
+    gtk_style_context_add_provider(context, GTK_STYLE_PROVIDER(cssProvider),
+                                   GTK_STYLE_PROVIDER_PRIORITY_USER);
 }

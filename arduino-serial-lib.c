@@ -29,7 +29,7 @@ int serialport_init(const char *serialport, int baud)
     struct termios toptions;
     int fd;
 
-    fd = open(serialport, O_RDWR | O_NONBLOCK);
+    fd = open(serialport, O_RDWR, O_NONBLOCK);
 
     if (fd == -1)
     {
@@ -87,16 +87,20 @@ int serialport_init(const char *serialport, int baud)
     toptions.c_cflag &= ~CSIZE;
     toptions.c_cflag |= CS8;
     // no flow control
-    //toptions.c_cflag &= ~CRTSCTS;
-    toptions.c_cflag |= CRTSCTS;
+    toptions.c_cflag &= ~CRTSCTS;
+    //toptions.c_cflag |= CRTSCTS;
+
     //toptions.c_cflag &= ~HUPCL; // disable hang-up-on-close to avoid reset
 
     toptions.c_cflag |= CREAD | CLOCAL;          // turn on READ & ignore ctrl lines
     toptions.c_iflag &= ~(IXON | IXOFF | IXANY); // turn off s/w flow ctrl
 
-    toptions.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG); // make raw
+    // Disable any special handling of received bytes
+    toptions.c_iflag &= ~(IGNBRK|BRKINT|PARMRK|ISTRIP|INLCR|IGNCR|ICRNL);
 
-    toptions.c_oflag &= ~OPOST; // make raw
+    toptions.c_lflag &= ~(ICANON | ECHO | ECHOE |ECHONL| ISIG); 
+
+    toptions.c_oflag &= ~OPOST; 
 
     // see: http://unixwiz.net/techtips/termios-vmin-vtime.html
     //TODO

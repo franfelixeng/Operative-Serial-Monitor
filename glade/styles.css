@@ -1,0 +1,9 @@
+.TextScreen text {
+    color: black;
+    background-color: white;
+}
+
+.TextScreen {
+    font-size: 12pt;
+    font-family: Arial, Helvetica, sans-serif;
+}

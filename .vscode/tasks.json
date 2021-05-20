@@ -59,7 +59,17 @@
 		{
 			"type": "shell",
 			"label": "run",
-			"command": "${workspaceFolder}/./main",
+			"command": "${workspaceFolder}/main",
+			"dependsOn": "C/C++: simple build",
+			"dependsOrder": "sequence",
+			"problemMatcher": [
+				"$gcc"
+			]
+		},
+		{
+			"type": "shell",
+			"label": "run with GTK debug",
+			"command": "GTK_DEBUG=interactive ${workspaceFolder}/main",
 			"dependsOn": "C/C++: simple build",
 			"dependsOrder": "sequence",
 			"problemMatcher": [
