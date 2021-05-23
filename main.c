@@ -6,6 +6,7 @@
 #include <gtk/gtk.h>
 #include <gtk/gtkx.h>
 #include <pthread.h>
+#include <fcntl.h>
 
 #include "arduino-serial-lib.h"
 
@@ -21,7 +22,7 @@ GtkTextBuffer *buffer_screen;
 GtkBuilder *builder;
 
 int fd = -1;
-char *port = NULL;
+char port[21] = "/dev/";
 int baudrate = 0;
 pthread_t ref_reading;
 
@@ -51,7 +52,9 @@ int refresh_ports()
 
 void on_cbt_ports_changed()
 {
-    port = gtk_combo_box_text_get_active_text(cbt_ports);
+    char *p;
+    p = gtk_combo_box_text_get_active_text(cbt_ports);
+    strncat(port, p, 20);
 }
 
 void on_cbt_baud_rate_changed()
@@ -63,50 +66,71 @@ void on_cbt_baud_rate_changed()
 
 // run in gtk_main() environment
 
-
 gboolean on_read_usb(gpointer data)
 {
-    //g_strdelimit(c,"\r\n",'\n');
-    //gtk_text_buffer_insert_interactive_at_cursor(buffer_screen, c, -1, True);
     gtk_text_buffer_insert_at_cursor(buffer_screen, (gchar *)data, -1);
 
     return False;
 }
 
+gboolean on_disconnect(gpointer data)
+{
+    gtk_button_set_image(button_connect, im_connect);
+    gtk_button_set_label(button_connect, "connect");
+}
+
 void *thread_reading(void *arg)
 {
-    int i = 0;
-    char text[1024];
-    text[1023] = '\0';
-
+    char *text;
+    int n;
     for (;;)
     {
-        while ((text[i] = serialport_read(fd)) != '\0' && i < 1023)
+        text = serialport_read(fd);
+
+        if (text == NULL) // error or press disconnect
         {
-            i++;
+            if (fd != -1)
+            {
+                serialport_close(fd);
+                fd = -1;
+            }
+            printf("disconnected\n");
+            ref_reading = 0;
+            g_idle_add(on_disconnect, NULL);
+            refresh_ports();
+            break;
         }
-        if (i > 0)
+        if (text[0] == '\0') //disconnected board
+        {
+            if (fd != -1)
+            {
+                serialport_close(fd);
+                fd = -1;
+            }
+            printf("disconnected\n");
+            ref_reading = 0;
+            g_idle_add(on_disconnect, NULL);
+            break;
+        }
+        else
         {
             g_idle_add(on_read_usb, text);
-            i = 0;
         }
     }
 }
 
 void on_button_connect_clicked()
 {
-
     if (fd == -1)
     {
-        char serialPort[21] = "/dev/";
-        fd = serialport_init(strncat(serialPort, port, 20), baudrate);
+        fd = serialport_init(port, baudrate);
         if (fd == -1)
         {
             error("couldn't open port");
             //TODO maybe show info
             return;
         }
-        printf("opened port %s\n", serialPort);
+        printf("opened port %s\n", port);
         gtk_button_set_image(button_connect, im_disconnect);
         gtk_button_set_label(button_connect, "connected");
 
@@ -114,14 +138,16 @@ void on_button_connect_clicked()
     }
     else if (fd != -1)
     {
+        pthread_cancel(ref_reading);
+
         if (serialport_close(fd) != 0)
         {
             error("don't close");
         }
-        pthread_cancel(ref_reading);
+        fd = -1;
+        gtk_combo_box_text_remove_all(cbt_ports);
         gtk_button_set_image(button_connect, im_connect);
         gtk_button_set_label(button_connect, "connect");
-        fd = -1;
     }
 }
 
@@ -155,7 +181,6 @@ void on_entry_port_icon_press(GtkEntry *entry, GtkEntryIconPosition icon_pos,
         if (!isMenber)
         {
             gtk_entry_set_text(entry, "");
-            port = NULL;
         }
     }
 }

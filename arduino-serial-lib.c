@@ -29,7 +29,7 @@ int serialport_init(const char *serialport, int baud)
     struct termios toptions;
     int fd;
 
-    fd = open(serialport, O_RDWR);
+    fd = open(serialport, O_RDWR, O_NOCTTY);
 
     if (fd == -1)
     {
@@ -92,20 +92,21 @@ int serialport_init(const char *serialport, int baud)
 
     //toptions.c_cflag &= ~HUPCL; // disable hang-up-on-close to avoid reset
 
-    toptions.c_cflag |= CREAD | CLOCAL;          // turn on READ & ignore ctrl lines
+    toptions.c_cflag |= CREAD;                   //| CLOCAL;
+    toptions.c_cflag &= ~CLOCAL;                 // turn on READ & ignore ctrl lines
     toptions.c_iflag &= ~(IXON | IXOFF | IXANY); // turn off s/w flow ctrl
 
     // Disable any special handling of received bytes
-    toptions.c_iflag &= ~(IGNBRK|BRKINT|PARMRK|ISTRIP|INLCR|IGNCR|ICRNL);
+    toptions.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | IGNCR | ICRNL);
 
-    toptions.c_lflag &= ~(ICANON | ECHO | ECHOE |ECHONL| ISIG); 
+    toptions.c_lflag &= ~(ICANON | ECHO | ECHOE | ECHONL | ISIG);
 
-    toptions.c_oflag &= ~OPOST; 
+    toptions.c_oflag &= ~OPOST;
 
     // see: http://unixwiz.net/techtips/termios-vmin-vtime.html
-    
-    toptions.c_cc[VMIN] = 0;
-    toptions.c_cc[VTIME] = 1;//needed to solve problems like \r\n for example
+
+    toptions.c_cc[VMIN] = 255;
+    toptions.c_cc[VTIME] = 1; //needed to solve problems like \r\n for example
 
     tcsetattr(fd, TCSANOW, &toptions);
     if (tcsetattr(fd, TCSAFLUSH, &toptions) < 0)
@@ -144,45 +145,40 @@ int serialport_write(int fd, const char *str)
     }
     return 0;
 }
+/*
+    Blocks the process, until it has characters.
+    Retorna nulo em caso de erro, ou uma string vazia caso se perca a conexão usb.
+    If all goes well it returns to the statically allocated buffer;
+*/
 
-int serialport_read(int fd)
+char *serialport_read(int fd)
 {
-    char b[1]; // read expects an array, so we give it a 1-byte array
-    //int i = 0;
+    static char buf[257];
+
     int n = 0;
 
-    n = read(fd, b, 1); // read a char at a time
-    if (n == -1)
-    {
-        printf("erro read -1\n");
-        return -1; // couldn't read
-    }
-    else if (n == 0)
-    {
-        //printf("fim eof\n");
-        b[0] = '\0';
-    }
-
-    return (int)b[0];
-}
-
-//
-int serialport_read_until(int fd, char *buf, char until, int buf_max)
-{
-    char b[1]; // read expects an array, so we give it a 1-byte array
     int i = 0;
-    do
-    {
-        int n = read(fd, b, 1); // read a char at a time
-        if (n == -1)
-            return -1; // couldn't read
+    n = read(fd, buf, 255);
 
-        buf[i] = b[0];
-        i++;
-    } while (b[0] != until && i < buf_max);
-    buf[i] = 0; // null terminate the string
-    return 0;
+    if (n < 0)
+    {
+        return NULL;
+    }
+
+    // for the caracter \r\n which uses two bytes
+    if (n == 255)
+    {
+        if (buf[254] == '\r')
+        {
+            n += read(fd, (buf + 254), 1);
+        }
+    }
+
+    buf[n] = '\0';
+    
+    return buf;
 }
+
 
 int serialport_read_n_bytes(int fd, char *buf, int n)
 {
@@ -224,8 +220,8 @@ int serialport_devices_ports(char **ports, int n_max)
     {
         if (strncmp(de->d_name, "ttyUSB", 6) == 0)
         {
-            ports[i] = calloc(9,sizeof(char));
-            strcpy(ports[i],de->d_name);
+            ports[i] = calloc(9, sizeof(char));
+            strcpy(ports[i], de->d_name);
             n_max--;
             i++;
         }
