@@ -21,22 +21,134 @@
         <property name="can_focus">False</property>
         <property name="orientation">vertical</property>
         <child>
-          <object class="GtkScrolledWindow">
+          <object class="GtkActionBar" id="ab_configs">
             <property name="visible">True</property>
-            <property name="can_focus">True</property>
+            <property name="can_focus">False</property>
+            <property name="double_buffered">False</property>
+            <child>
+              <object class="GtkFontButton">
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="receives_default">True</property>
+                <property name="font">Sans 12</property>
+                <property name="language">pt-br</property>
+                <property name="preview_text"/>
+              </object>
+              <packing>
+                <property name="position">0</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkColorButton">
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="receives_default">True</property>
+                <property name="rgba">rgb(0,0,0)</property>
+              </object>
+              <packing>
+                <property name="position">1</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkCheckButton" id="cb_auto_scroll">
+                <property name="label" translatable="yes">AutoScroll</property>
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="receives_default">False</property>
+                <property name="double_buffered">False</property>
+                <property name="draw_indicator">True</property>
+                <signal name="toggled" handler="on_cb_auto_scroll_toggled" swapped="no"/>
+              </object>
+              <packing>
+                <property name="position">2</property>
+              </packing>
+            </child>
+            <style>
+              <class name="ActionsBar"/>
+            </style>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">1</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkActionBar" id="ab_send">
+            <property name="visible">True</property>
+            <property name="can_focus">False</property>
+            <property name="double_buffered">False</property>
+            <property name="valign">start</property>
+            <child>
+              <object class="GtkScrolledWindow">
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="hexpand">True</property>
+                <property name="shadow_type">in</property>
+                <child>
+                  <object class="GtkTextView" id="tv_send">
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="hexpand">True</property>
+                    <property name="pixels_above_lines">1</property>
+                    <property name="pixels_below_lines">1</property>
+                    <property name="pixels_inside_wrap">1</property>
+                    <property name="left_margin">3</property>
+                    <property name="right_margin">3</property>
+                    <property name="top_margin">3</property>
+                    <property name="bottom_margin">3</property>
+                    <style>
+                      <class name="TextSend"/>
+                    </style>
+                  </object>
+                </child>
+              </object>
+              <packing>
+                <property name="position">0</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkButton">
+                <property name="label" translatable="yes">Send</property>
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="receives_default">True</property>
+                <property name="double_buffered">False</property>
+                <property name="valign">center</property>
+              </object>
+              <packing>
+                <property name="pack_type">end</property>
+                <property name="position">0</property>
+              </packing>
+            </child>
+            <style>
+              <class name="ActionsBar"/>
+            </style>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">2</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkScrolledWindow" id="scrolledw_screen">
+            <property name="visible">True</property>
+            <property name="can_focus">False</property>
+            <property name="double_buffered">False</property>
             <property name="hexpand">True</property>
             <property name="vexpand">True</property>
-            <property name="shadow_type">in</property>
+            <property name="window_placement_set">False</property>
+            <property name="kinetic_scrolling">False</property>
+            <property name="overlay_scrolling">False</property>
             <child>
               <object class="GtkTextView" id="tv_screen">
                 <property name="visible">True</property>
-                <property name="sensitive">False</property>
-                <property name="can_focus">False</property>
+                <property name="can_focus">True</property>
                 <property name="double_buffered">False</property>
                 <property name="pixels_above_lines">3</property>
                 <property name="pixels_below_lines">3</property>
                 <property name="editable">False</property>
-                <property name="wrap_mode">word-char</property>
                 <property name="cursor_visible">False</property>
                 <property name="accepts_tab">False</property>
                 <style>
@@ -44,14 +156,11 @@
                 </style>
               </object>
             </child>
-            <style>
-              <class name="win"/>
-            </style>
           </object>
           <packing>
             <property name="expand">False</property>
             <property name="fill">True</property>
-            <property name="position">0</property>
+            <property name="position">3</property>
           </packing>
         </child>
         <child>
@@ -63,8 +172,8 @@
               <object class="GtkComboBoxText" id="cbt_ports">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
+                <property name="focus_on_click">False</property>
                 <property name="halign">start</property>
-                <property name="valign">end</property>
                 <property name="has_frame">False</property>
                 <property name="button_sensitivity">on</property>
                 <property name="has_entry">True</property>
@@ -73,6 +182,8 @@
                 <child internal-child="entry">
                   <object class="GtkEntry" id="entry_port">
                     <property name="can_focus">False</property>
+                    <property name="editable">False</property>
+                    <property name="caps_lock_warning">False</property>
                     <property name="primary_icon_stock">gtk-convert</property>
                     <property name="secondary_icon_name">dialog-input-devices</property>
                     <property name="primary_icon_tooltip_text" translatable="yes">refresh</property>
@@ -92,7 +203,6 @@
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="halign">start</property>
-                <property name="valign">end</property>
                 <property name="has_frame">False</property>
                 <property name="has_entry">True</property>
                 <property name="popup_fixed_width">False</property>
@@ -148,14 +258,14 @@
                 <property name="expand">False</property>
                 <property name="fill">True</property>
                 <property name="pack_type">end</property>
-                <property name="position">2</property>
+                <property name="position">3</property>
               </packing>
             </child>
           </object>
           <packing>
             <property name="expand">False</property>
             <property name="fill">True</property>
-            <property name="position">1</property>
+            <property name="position">4</property>
           </packing>
         </child>
       </object>

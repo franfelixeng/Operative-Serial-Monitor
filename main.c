@@ -18,8 +18,15 @@ GtkComboBoxText *cbt_ports;
 GtkComboBoxText *cbt_baudrate;
 GtkButton *button_connect;
 GtkTextView *tv_screen;
+GtkTextView *tv_send;
 GtkTextBuffer *buffer_screen;
+GtkScrolledWindow *scrolledw_screen;
+GtkAdjustment *scrol_adjustment_screen;
+GtkActionBar *ab_configs;
+GtkActionBar *ab_send;
 GtkBuilder *builder;
+
+gboolean flag_auto_scroll = False;
 
 int fd = -1;
 char port[21] = "/dev/";
@@ -66,10 +73,26 @@ void on_cbt_baud_rate_changed()
 
 // run in gtk_main() environment
 
+gboolean actualize_scrol(gpointer data)
+{   
+    double value;
+    value = gtk_adjustment_get_upper (scrol_adjustment_screen);
+    gtk_adjustment_set_value(scrol_adjustment_screen, value);
+    return False;
+}
+
 gboolean on_read_usb(gpointer data)
 {
-    gtk_text_buffer_insert_at_cursor(buffer_screen, (gchar *)data, -1);
-
+    
+    GtkTextIter iter;
+    gtk_text_buffer_get_iter_at_offset(buffer_screen, &iter, EOF);
+    gtk_text_buffer_insert(buffer_screen, &iter, (char *)data, -1);
+    
+    if(flag_auto_scroll)
+    {
+        g_idle_add(actualize_scrol,NULL);
+    }
+    
     return False;
 }
 
@@ -94,6 +117,7 @@ void *thread_reading(void *arg)
                 serialport_close(fd);
                 fd = -1;
             }
+            //TODO put message
             printf("disconnected\n");
             ref_reading = 0;
             g_idle_add(on_disconnect, NULL);
@@ -117,6 +141,11 @@ void *thread_reading(void *arg)
             g_idle_add(on_read_usb, text);
         }
     }
+}
+
+void on_cb_auto_scroll_toggled(GtkToggleButton *togglebutton, gpointer  user_data)
+{
+   flag_auto_scroll = gtk_toggle_button_get_active(togglebutton);
 }
 
 void on_button_connect_clicked()
@@ -187,6 +216,10 @@ void on_entry_port_icon_press(GtkEntry *entry, GtkEntryIconPosition icon_pos,
 
 void css_set(GtkCssProvider *cssProvider, GtkWidget *g_widgete);
 
+char *getRegistros_intervalo(int data_inicial, int data_final);
+
+int getAnguloRegistro(char a);
+
 int main(int argc, char *argv[])
 {
 
@@ -205,21 +238,35 @@ int main(int argc, char *argv[])
 
     window = GTK_WIDGET(gtk_builder_get_object(builder, "w_fist"));
 
+    scrolledw_screen = (GtkScrolledWindow *)GTK_WIDGET(gtk_builder_get_object(builder, "scrolledw_screen"));
+    scrol_adjustment_screen = (GtkAdjustment *)gtk_scrolled_window_get_vadjustment(scrolledw_screen);
+
+    tv_screen = (GtkTextView *)GTK_WIDGET(gtk_builder_get_object(builder, "tv_screen"));
+    tv_send = (GtkTextView *)GTK_WIDGET(gtk_builder_get_object(builder, "tv_send"));
+    buffer_screen = gtk_text_view_get_buffer(tv_screen);
+
     cbt_ports = (GtkComboBoxText *)GTK_WIDGET(gtk_builder_get_object(builder, "cbt_ports"));
     cbt_baudrate = (GtkComboBoxText *)GTK_WIDGET(gtk_builder_get_object(builder, "cbt_baud_rate"));
     button_connect = (GtkButton *)GTK_WIDGET(gtk_builder_get_object(builder, "button_connect"));
-    tv_screen = (GtkTextView *)GTK_WIDGET(gtk_builder_get_object(builder, "tv_screen"));
-    buffer_screen = gtk_text_view_get_buffer(tv_screen);
+
+    ab_configs = (GtkActionBar *)GTK_WIDGET(gtk_builder_get_object(builder, "ab_configs"));
+    ab_send = (GtkActionBar *)GTK_WIDGET(gtk_builder_get_object(builder, "ab_send"));
+
     im_connect = GTK_WIDGET(gtk_builder_get_object(builder, "im_connect"));
     im_disconnect = GTK_WIDGET(gtk_builder_get_object(builder, "im_disconnect"));
 
     g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
     gtk_builder_connect_signals(builder, NULL);
     refresh_ports();
+    
     css_set(provider, (GtkWidget *)tv_screen);
+    css_set(provider, (GtkWidget *)tv_send);
+    css_set(provider, (GtkWidget *)ab_configs);
+    css_set(provider, (GtkWidget *)ab_send);
+
+    
     gtk_widget_show(window);
     gtk_main();
-
     return EXIT_SUCCESS;
 }
 

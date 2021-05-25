@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "gtk.h": "c",
-        "limits": "cpp"
+        "limits": "cpp",
+        "type_traits": "c"
     }
 }
