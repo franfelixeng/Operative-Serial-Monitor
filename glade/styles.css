@@ -4,13 +4,11 @@
 }
 
 .TextScreen {
-    font-size: 12pt;
-    font-family: Arial, Helvetica, sans-serif;
+    font: 12pt Sans Regular 
 }
 
 .TextSend {
-    font-size: 12pt;
-    font-family: Arial, Helvetica, sans-serif;
+    font: 12pt Sans Regular 
 }
 
 .TextSend text{

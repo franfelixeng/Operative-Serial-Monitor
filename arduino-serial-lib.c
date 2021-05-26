@@ -105,7 +105,7 @@ int serialport_init(const char *serialport, int baud)
 
     // see: http://unixwiz.net/techtips/termios-vmin-vtime.html
 
-    toptions.c_cc[VMIN] = 255;
+    toptions.c_cc[VMIN] = 30;
     toptions.c_cc[VTIME] = 1; //needed to solve problems like \r\n for example
 
     tcsetattr(fd, TCSANOW, &toptions);
@@ -153,12 +153,12 @@ int serialport_write(int fd, const char *str)
 
 char *serialport_read(int fd)
 {
-    static char buf[257];
+    static char buf[33];
 
     int n = 0;
 
     int i = 0;
-    n = read(fd, buf, 255);
+    n = read(fd, buf, 30);
 
     if (n < 0)
     {
@@ -166,11 +166,11 @@ char *serialport_read(int fd)
     }
 
     // for the caracter \r\n which uses two bytes
-    if (n == 255)
+    if (n == 30)
     {
-        if (buf[254] == '\r')
+        if (buf[29] == '\r')
         {
-            n += read(fd, (buf + 254), 1);
+            n += read(fd, (buf + 29), 1);
         }
     }
 

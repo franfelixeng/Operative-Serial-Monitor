@@ -26,12 +26,18 @@ GtkActionBar *ab_configs;
 GtkActionBar *ab_send;
 GtkBuilder *builder;
 
+
+GtkCssProvider *provid_font;
+GtkCssProvider *provid_color;
+
 gboolean flag_auto_scroll = False;
 
 int fd = -1;
 char port[21] = "/dev/";
 int baudrate = 0;
 pthread_t ref_reading;
+
+void css_set(GtkCssProvider *cssProvider, GtkWidget *g_widgete);
 
 void error(char *msg)
 {
@@ -74,25 +80,25 @@ void on_cbt_baud_rate_changed()
 // run in gtk_main() environment
 
 gboolean actualize_scrol(gpointer data)
-{   
+{
     double value;
-    value = gtk_adjustment_get_upper (scrol_adjustment_screen);
+    value = gtk_adjustment_get_upper(scrol_adjustment_screen);
     gtk_adjustment_set_value(scrol_adjustment_screen, value);
     return False;
 }
 
 gboolean on_read_usb(gpointer data)
 {
-    
+
     GtkTextIter iter;
-    gtk_text_buffer_get_iter_at_offset(buffer_screen, &iter, EOF);
+    gtk_text_buffer_get_end_iter(buffer_screen, &iter);
     gtk_text_buffer_insert(buffer_screen, &iter, (char *)data, -1);
-    
-    if(flag_auto_scroll)
+
+    if (flag_auto_scroll)
     {
-        g_idle_add(actualize_scrol,NULL);
+        g_idle_add(actualize_scrol, NULL);
     }
-    
+
     return False;
 }
 
@@ -143,9 +149,27 @@ void *thread_reading(void *arg)
     }
 }
 
-void on_cb_auto_scroll_toggled(GtkToggleButton *togglebutton, gpointer  user_data)
+void on_cb_auto_scroll_toggled(GtkToggleButton *togglebutton, gpointer user_data)
 {
-   flag_auto_scroll = gtk_toggle_button_get_active(togglebutton);
+    flag_auto_scroll = gtk_toggle_button_get_active(togglebutton);
+}
+
+void on_button_send_clicked(GtkButton *button, gpointer user_data)
+{
+    GtkTextBuffer *tb;
+    GtkTextIter iter_start;
+    GtkTextIter iter_end;
+    char* text;
+
+    tb = gtk_text_view_get_buffer(tv_send);
+    gtk_text_buffer_get_start_iter (tb,&iter_start);
+    gtk_text_buffer_get_start_iter (tb,&iter_end);
+    text = gtk_text_buffer_get_text(tb,&iter_start,&iter_end,True);
+
+    printf("%s\n",text);
+    printf("vaaaaaaaaaai\n");
+
+
 }
 
 void on_button_connect_clicked()
@@ -178,6 +202,43 @@ void on_button_connect_clicked()
         gtk_button_set_image(button_connect, im_connect);
         gtk_button_set_label(button_connect, "connect");
     }
+}
+
+void on_fb_screen_font_set(GtkFontButton *font_button, gpointer data)
+{
+    const gchar *font;
+    char *str_number;
+    gchar cssText[100] = {0};
+    gchar str_font[70] = {0};
+    PangoFontDescription *pfd;
+
+    
+
+    font = gtk_font_button_get_font_name(font_button);
+    str_number = strrchr(font, ' ');
+    strncpy(str_font, font, str_number - font);
+
+    sprintf(cssText, ".TextScreen{font:%spt %s;}", str_number + 1, str_font);
+    printf("%s\n", cssText);
+    gtk_css_provider_load_from_data(provid_font, cssText, -1, NULL);
+    css_set(provid_font, (GtkWidget *)tv_screen);
+
+}
+
+void on_cbutton_font_color_set(GtkColorButton *cbutton, gpointer user_data)
+{
+    GdkColor color;
+    gchar cssText[50] = {0};
+
+    gtk_color_button_get_color(cbutton, &color);
+
+    sprintf(cssText, ".TextScreen text{color:rgb(%d,%d,%d);}",
+            (255 * color.red) / 65535, (255 * color.green) / 65535, (255 * color.blue) / 65535);
+    //sprintf(cssText, ".TextScreen text{color:#%06x}", color.pixel);
+
+    printf("%s\n", cssText);
+    gtk_css_provider_load_from_data(provid_color, cssText, -1, NULL);
+    css_set(provid_color, (GtkWidget *)tv_screen);
 }
 
 void on_entry_port_icon_press(GtkEntry *entry, GtkEntryIconPosition icon_pos,
@@ -214,17 +275,13 @@ void on_entry_port_icon_press(GtkEntry *entry, GtkEntryIconPosition icon_pos,
     }
 }
 
-void css_set(GtkCssProvider *cssProvider, GtkWidget *g_widgete);
-
 char *getRegistros_intervalo(int data_inicial, int data_final);
-
-int getAnguloRegistro(char a);
 
 int main(int argc, char *argv[])
 {
 
-    //gtk_init(&argc, &argv);
-    gtk_init(NULL, NULL);
+    gtk_init(&argc, &argv);
+
     const int buf_max = 256;
     pid_t fistfork;
 
@@ -234,6 +291,9 @@ int main(int argc, char *argv[])
 
     builder = gtk_builder_new_from_file("glade/SerialUI.glade");
     GtkCssProvider *provider = gtk_css_provider_new();
+    provid_font = gtk_css_provider_new();
+    provid_color = gtk_css_provider_new();
+
     gtk_css_provider_load_from_path(GTK_CSS_PROVIDER(provider), "glade/styles.css", NULL);
 
     window = GTK_WIDGET(gtk_builder_get_object(builder, "w_fist"));
@@ -258,13 +318,13 @@ int main(int argc, char *argv[])
     g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
     gtk_builder_connect_signals(builder, NULL);
     refresh_ports();
-    
+
     css_set(provider, (GtkWidget *)tv_screen);
     css_set(provider, (GtkWidget *)tv_send);
     css_set(provider, (GtkWidget *)ab_configs);
     css_set(provider, (GtkWidget *)ab_send);
 
-    
+    gtk_window_set_title((GtkWindow *)window, "USB Serial");
     gtk_widget_show(window);
     gtk_main();
     return EXIT_SUCCESS;

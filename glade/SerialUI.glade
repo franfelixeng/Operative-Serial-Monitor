@@ -26,24 +26,30 @@
             <property name="can_focus">False</property>
             <property name="double_buffered">False</property>
             <child>
-              <object class="GtkFontButton">
+              <object class="GtkFontButton" id="fb_screen">
                 <property name="visible">True</property>
-                <property name="can_focus">True</property>
+                <property name="can_focus">False</property>
                 <property name="receives_default">True</property>
+                <property name="double_buffered">False</property>
                 <property name="font">Sans 12</property>
                 <property name="language">pt-br</property>
+                <property name="level">GTK_FONT_CHOOSER_LEVEL_STYLE | GTK_FONT_CHOOSER_LEVEL_SIZE | GTK_FONT_CHOOSER_LEVEL_VARIATIONS | GTK_FONT_CHOOSER_LEVEL_FEATURES | GTK_FONT_CHOOSER_LEVEL_FAMILY</property>
                 <property name="preview_text"/>
+                <property name="show_preview_entry">False</property>
+                <signal name="font-set" handler="on_fb_screen_font_set" object="tv_screen" after="yes" swapped="no"/>
               </object>
               <packing>
                 <property name="position">0</property>
               </packing>
             </child>
             <child>
-              <object class="GtkColorButton">
+              <object class="GtkColorButton" id="cbutton_font">
                 <property name="visible">True</property>
-                <property name="can_focus">True</property>
+                <property name="can_focus">False</property>
                 <property name="receives_default">True</property>
+                <property name="double_buffered">False</property>
                 <property name="rgba">rgb(0,0,0)</property>
+                <signal name="color-set" handler="on_cbutton_font_color_set" swapped="no"/>
               </object>
               <packing>
                 <property name="position">1</property>
@@ -88,7 +94,14 @@
                 <child>
                   <object class="GtkTextView" id="tv_send">
                     <property name="visible">True</property>
+                    <property name="app_paintable">True</property>
                     <property name="can_focus">True</property>
+                    <property name="has_focus">True</property>
+                    <property name="is_focus">True</property>
+                    <property name="can_default">True</property>
+                    <property name="has_default">True</property>
+                    <property name="receives_default">True</property>
+                    <property name="double_buffered">False</property>
                     <property name="hexpand">True</property>
                     <property name="pixels_above_lines">1</property>
                     <property name="pixels_below_lines">1</property>
@@ -97,6 +110,7 @@
                     <property name="right_margin">3</property>
                     <property name="top_margin">3</property>
                     <property name="bottom_margin">3</property>
+                    <property name="populate_all">True</property>
                     <style>
                       <class name="TextSend"/>
                     </style>
@@ -108,13 +122,14 @@
               </packing>
             </child>
             <child>
-              <object class="GtkButton">
+              <object class="GtkButton" id="button_send">
                 <property name="label" translatable="yes">Send</property>
                 <property name="visible">True</property>
-                <property name="can_focus">True</property>
-                <property name="receives_default">True</property>
+                <property name="can_focus">False</property>
+                <property name="receives_default">False</property>
                 <property name="double_buffered">False</property>
                 <property name="valign">center</property>
+                <signal name="clicked" handler="on_button_send_clicked" swapped="no"/>
               </object>
               <packing>
                 <property name="pack_type">end</property>
@@ -145,10 +160,13 @@
               <object class="GtkTextView" id="tv_screen">
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
-                <property name="double_buffered">False</property>
                 <property name="pixels_above_lines">3</property>
                 <property name="pixels_below_lines">3</property>
                 <property name="editable">False</property>
+                <property name="left_margin">10</property>
+                <property name="right_margin">10</property>
+                <property name="top_margin">10</property>
+                <property name="bottom_margin">10</property>
                 <property name="cursor_visible">False</property>
                 <property name="accepts_tab">False</property>
                 <style>
