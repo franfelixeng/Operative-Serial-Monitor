@@ -108,7 +108,6 @@
                     <property name="right_margin">3</property>
                     <property name="top_margin">3</property>
                     <property name="bottom_margin">3</property>
-                    <signal name="cut-clipboard" handler="on_tv_send_cut_clipboard" swapped="no"/>
                     <style>
                       <class name="TextSend"/>
                     </style>

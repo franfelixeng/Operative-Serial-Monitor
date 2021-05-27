@@ -193,7 +193,6 @@
                 <property name="button_sensitivity">on</property>
                 <property name="has_entry">True</property>
                 <property name="popup_fixed_width">False</property>
-                <signal name="changed" handler="on_cbt_ports_changed" swapped="no"/>
                 <child internal-child="entry">
                   <object class="GtkEntry" id="entry_port">
                     <property name="can_focus">False</property>
@@ -238,7 +237,6 @@
                   <item>1000000 baud</item>
                   <item>2000000 baud</item>
                 </items>
-                <signal name="changed" handler="on_cbt_baud_rate_changed" swapped="no"/>
                 <child internal-child="entry">
                   <object class="GtkEntry">
                     <property name="can_focus">False</property>
@@ -267,7 +265,7 @@
                 <property name="hexpand">True</property>
                 <property name="image">im_connect</property>
                 <property name="always_show_image">True</property>
-                <signal name="clicked" handler="on_button_connect_clicked" swapped="no"/>
+                <signal name="clicked" handler="on_button_connect_clicked" object="entry_port" swapped="no"/>
               </object>
               <packing>
                 <property name="expand">False</property>

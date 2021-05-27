@@ -32,7 +32,6 @@ GtkCssProvider *provid_color;
 gboolean flag_auto_scroll = False;
 
 int fd = -1;
-char port[21] = "/dev/";
 int baudrate = 0;
 pthread_t ref_reading;
 
@@ -44,36 +43,43 @@ void error(char *msg)
     exit(EXIT_FAILURE);
 }
 
-int refresh_ports()
+int refresh_ports(GtkComboBoxText *cbt, GtkEntry *entry)
 {
-    char *ports[10];
     int n;
+    char *ports[10];
+    const char *text;
+    uint8_t isMenber = 0;
 
-    gtk_combo_box_text_remove_all(cbt_ports);
+    gtk_combo_box_text_remove_all(cbt);
 
     n = serialport_devices_ports(ports, 10);
 
-    for (int i = 0; i < n; i++)
+    if (n > 0)
     {
-        gtk_combo_box_text_append_text(cbt_ports, ports[i]);
-        free(ports[i]);
+        if (entry != NULL)
+        {   
+            text = gtk_entry_get_text(entry);
+        }
+
+        for (int i = 0; i < n; i++)
+        {
+            if (entry != NULL)
+            {
+                if (strcmp(text, ports[i]) == 0)
+                {
+                    isMenber = 1;
+                }
+            }
+
+            gtk_combo_box_text_append_text(cbt_ports, ports[i]);
+            free(ports[i]);
+        }
     }
-
+    if (!isMenber && entry != NULL)
+    {
+        gtk_entry_set_text(entry, "");
+    }
     return n;
-}
-
-void on_cbt_ports_changed()
-{
-    char *p;
-    p = gtk_combo_box_text_get_active_text(cbt_ports);
-    strncat(port, p, 20);
-}
-
-void on_cbt_baud_rate_changed()
-{
-    char *str_baud;
-    str_baud = gtk_combo_box_text_get_active_text(cbt_baudrate);
-    baudrate = (int)strtol(str_baud, (char **)strchr(str_baud, ' '), 10);
 }
 
 // run in gtk_main() environment
@@ -126,7 +132,6 @@ void *thread_reading(void *arg)
             printf("disconnected\n");
             ref_reading = 0;
             g_idle_add(on_disconnect, NULL);
-            refresh_ports();
             break;
         }
         if (text[0] == '\0') //disconnected board
@@ -187,24 +192,50 @@ void on_button_send_clicked()
     }
 }
 
-void on_button_connect_clicked()
+void on_button_connect_clicked(GtkButton *button, gpointer user_data)
 {
     if (fd == -1)
     {
-        fd = serialport_init(port, baudrate);
+        GtkEntry *entry = (GtkEntry *)user_data;
+
+        char serial_port[30] = "/dev/";
+        char *p = NULL;
+        char *str_baud;
+        int baud;
+
+        refresh_ports(cbt_ports, entry);
+
+        p = gtk_combo_box_text_get_active_text(cbt_ports);
+
+        if (strcmp(p, "") == 0)
+        {
+            printf("No port\n");
+            return;
+        }
+
+        str_baud = gtk_combo_box_text_get_active_text(cbt_baudrate);
+
+        if (strcmp(str_baud, "") == 0)
+        {
+            printf("No baud\n");
+            return;
+        }
+
+        strncat(serial_port, p, 20);
+        baud = (int)strtol(str_baud, (char **)strchr(str_baud, ' '), 10);
+
+        fd = serialport_init(serial_port, baud);
         if (fd == -1)
         {
             error("couldn't open port");
-            //TODO maybe show info
+            return;
         }
-        else
-        {
-            printf("opened port %s\n", port);
-            gtk_button_set_image(button_connect, im_disconnect);
-            gtk_button_set_label(button_connect, "connected");
 
-            pthread_create(&ref_reading, NULL, thread_reading, NULL);
-        }
+        printf("opened port %s\n", serial_port);
+        gtk_button_set_image(button_connect, im_disconnect);
+        gtk_button_set_label(button_connect, "connected");
+
+        pthread_create(&ref_reading, NULL, thread_reading, NULL);
     }
     else if (fd > 0)
     {
@@ -258,34 +289,10 @@ void on_cbutton_font_color_set(GtkColorButton *cbutton, gpointer user_data)
 void on_entry_port_icon_press(GtkEntry *entry, GtkEntryIconPosition icon_pos,
                               GdkEvent *event, gpointer user_data)
 {
-    int n;
-    char *ports[10];
-    const char *text;
-    uint8_t isMenber = 0;
+  
     if (icon_pos == GTK_ENTRY_ICON_PRIMARY)
     {
-        gtk_combo_box_text_remove_all(cbt_ports);
-
-        n = serialport_devices_ports(ports, 10);
-
-        if (n > 0)
-        {
-            text = gtk_entry_get_text(entry);
-            for (int i = 0; i < n; i++)
-            {
-                if (strcmp(text, ports[i]) == 0)
-                {
-                    isMenber = 1;
-                }
-                gtk_combo_box_text_append_text(cbt_ports, ports[i]);
-                free(ports[i]);
-            }
-        }
-
-        if (!isMenber)
-        {
-            gtk_entry_set_text(entry, "");
-        }
+        refresh_ports(cbt_ports, entry);
     }
 }
 
@@ -330,7 +337,8 @@ int main(int argc, char *argv[])
     im_disconnect = GTK_WIDGET(gtk_builder_get_object(builder, "im_disconnect"));
 
     gtk_builder_connect_signals(builder, NULL);
-    refresh_ports();
+
+    refresh_ports(cbt_ports, NULL);
 
     css_set(provider, (GtkWidget *)tv_screen);
     css_set(provider, (GtkWidget *)tv_send);
