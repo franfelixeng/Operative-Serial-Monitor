@@ -1,24 +1,29 @@
+@binding-set gtk-shift-clipboard {
+    bind "<shift>Return" {
+        "serial-send" ()
+    }
+}
+
 .TextScreen text {
     color: black;
     background-color: white;
 }
 
 .TextScreen {
-    font: 12pt Sans Regular 
+    font: 12pt Sans Regular
 }
 
 .TextSend {
-    font: 12pt Sans Regular 
+    font: 12pt Sans Regular;
+    -gtk-key-bindings:gtk-shift-clipboard;
 }
 
-.TextSend text{
+.TextSend text {
     color: black;
     background-color: white;
-    border: 1px solid  rgb(53, 53, 78);
+    border: 1px solid rgb(53, 53, 78);
 }
 
-.ActionsBar{
+.ActionsBar {
     border: 0px;
 }
-
-

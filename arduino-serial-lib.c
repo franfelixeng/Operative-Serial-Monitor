@@ -180,21 +180,6 @@ char *serialport_read(int fd)
 }
 
 
-int serialport_read_n_bytes(int fd, char *buf, int n)
-{
-    int state;
-    state = read(fd, buf, n);
-    return state;
-}
-
-int serialport_read_byte(int fd, char *c)
-{
-    int state;
-    state = read(fd, c, 1);
-    return state;
-}
-
-//
 int serialport_flush(int fd)
 {
     //TODO corrigir  flush

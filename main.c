@@ -26,7 +26,6 @@ GtkActionBar *ab_configs;
 GtkActionBar *ab_send;
 GtkBuilder *builder;
 
-
 GtkCssProvider *provid_font;
 GtkCssProvider *provid_color;
 
@@ -154,22 +153,38 @@ void on_cb_auto_scroll_toggled(GtkToggleButton *togglebutton, gpointer user_data
     flag_auto_scroll = gtk_toggle_button_get_active(togglebutton);
 }
 
-void on_button_send_clicked(GtkButton *button, gpointer user_data)
+void on_tv_send_by_return()
 {
     GtkTextBuffer *tb;
     GtkTextIter iter_start;
     GtkTextIter iter_end;
-    char* text;
+    char *text;
+    if (fd > 0)
+    {
+        tb = gtk_text_view_get_buffer(tv_send);
+        gtk_text_buffer_get_start_iter(tb, &iter_start);
+        gtk_text_buffer_get_end_iter(tb, &iter_end);
+        text = gtk_text_buffer_get_text(tb, &iter_start, &iter_end, True);
+        serialport_write(fd, text);
+        gtk_text_buffer_set_text(tb, "", 0);
+    }
+}
 
-    tb = gtk_text_view_get_buffer(tv_send);
-    gtk_text_buffer_get_start_iter (tb,&iter_start);
-    gtk_text_buffer_get_start_iter (tb,&iter_end);
-    text = gtk_text_buffer_get_text(tb,&iter_start,&iter_end,True);
-
-    printf("%s\n",text);
-    printf("vaaaaaaaaaai\n");
-
-
+void on_button_send_clicked()
+{
+    GtkTextBuffer *tb;
+    GtkTextIter iter_start;
+    GtkTextIter iter_end;
+    char *text;
+    if (fd > 0)
+    {
+        tb = gtk_text_view_get_buffer(tv_send);
+        gtk_text_buffer_get_start_iter(tb, &iter_start);
+        gtk_text_buffer_get_end_iter(tb, &iter_end);
+        text = gtk_text_buffer_get_text(tb, &iter_start, &iter_end, True);
+        serialport_write(fd, text);
+        gtk_text_buffer_set_text(tb, "", 0);
+    }
 }
 
 void on_button_connect_clicked()
@@ -181,15 +196,17 @@ void on_button_connect_clicked()
         {
             error("couldn't open port");
             //TODO maybe show info
-            return;
         }
-        printf("opened port %s\n", port);
-        gtk_button_set_image(button_connect, im_disconnect);
-        gtk_button_set_label(button_connect, "connected");
+        else
+        {
+            printf("opened port %s\n", port);
+            gtk_button_set_image(button_connect, im_disconnect);
+            gtk_button_set_label(button_connect, "connected");
 
-        pthread_create(&ref_reading, NULL, thread_reading, NULL);
+            pthread_create(&ref_reading, NULL, thread_reading, NULL);
+        }
     }
-    else if (fd != -1)
+    else if (fd > 0)
     {
         pthread_cancel(ref_reading);
 
@@ -212,8 +229,6 @@ void on_fb_screen_font_set(GtkFontButton *font_button, gpointer data)
     gchar str_font[70] = {0};
     PangoFontDescription *pfd;
 
-    
-
     font = gtk_font_button_get_font_name(font_button);
     str_number = strrchr(font, ' ');
     strncpy(str_font, font, str_number - font);
@@ -222,7 +237,6 @@ void on_fb_screen_font_set(GtkFontButton *font_button, gpointer data)
     printf("%s\n", cssText);
     gtk_css_provider_load_from_data(provid_font, cssText, -1, NULL);
     css_set(provid_font, (GtkWidget *)tv_screen);
-
 }
 
 void on_cbutton_font_color_set(GtkColorButton *cbutton, gpointer user_data)
@@ -315,7 +329,6 @@ int main(int argc, char *argv[])
     im_connect = GTK_WIDGET(gtk_builder_get_object(builder, "im_connect"));
     im_disconnect = GTK_WIDGET(gtk_builder_get_object(builder, "im_disconnect"));
 
-    g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
     gtk_builder_connect_signals(builder, NULL);
     refresh_ports();
 
@@ -323,6 +336,13 @@ int main(int argc, char *argv[])
     css_set(provider, (GtkWidget *)tv_send);
     css_set(provider, (GtkWidget *)ab_configs);
     css_set(provider, (GtkWidget *)ab_send);
+
+    g_signal_new("serial-send", G_TYPE_FROM_INSTANCE(tv_send),
+                 G_SIGNAL_ACTION, 0, NULL, NULL, NULL, G_TYPE_NONE, 0, NULL);
+
+    g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
+
+    g_signal_connect(tv_send, "serial-send", G_CALLBACK(on_tv_send_by_return), NULL);
 
     gtk_window_set_title((GtkWindow *)window, "USB Serial");
     gtk_widget_show(window);

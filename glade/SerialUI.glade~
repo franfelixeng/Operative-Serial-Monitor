@@ -99,8 +99,7 @@
                     <property name="has_focus">True</property>
                     <property name="is_focus">True</property>
                     <property name="can_default">True</property>
-                    <property name="has_default">True</property>
-                    <property name="receives_default">True</property>
+                    <property name="double_buffered">False</property>
                     <property name="hexpand">True</property>
                     <property name="pixels_above_lines">1</property>
                     <property name="pixels_below_lines">1</property>
@@ -109,7 +108,7 @@
                     <property name="right_margin">3</property>
                     <property name="top_margin">3</property>
                     <property name="bottom_margin">3</property>
-                    <property name="populate_all">True</property>
+                    <signal name="cut-clipboard" handler="on_tv_send_cut_clipboard" swapped="no"/>
                     <style>
                       <class name="TextSend"/>
                     </style>
