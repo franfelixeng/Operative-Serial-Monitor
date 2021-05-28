@@ -7,8 +7,9 @@
 #include <gtk/gtkx.h>
 #include <pthread.h>
 #include <fcntl.h>
-
+#include <locale.h>
 #include "arduino-serial-lib.h"
+#include "helper.h"
 
 GtkWidget *window;
 GtkWidget *im_connect;
@@ -35,55 +36,7 @@ int fd = -1;
 int baudrate = 0;
 pthread_t ref_reading;
 
-void css_set(GtkCssProvider *cssProvider, GtkWidget *g_widgete);
-
-void error(char *msg)
-{
-    fprintf(stderr, "%s\n", msg);
-    exit(EXIT_FAILURE);
-}
-
-int refresh_ports(GtkComboBoxText *cbt, GtkEntry *entry)
-{
-    int n;
-    char *ports[10];
-    const char *text;
-    uint8_t isMenber = 0;
-
-    gtk_combo_box_text_remove_all(cbt);
-
-    n = serialport_devices_ports(ports, 10);
-
-    if (n > 0)
-    {
-        if (entry != NULL)
-        {   
-            text = gtk_entry_get_text(entry);
-        }
-
-        for (int i = 0; i < n; i++)
-        {
-            if (entry != NULL)
-            {
-                if (strcmp(text, ports[i]) == 0)
-                {
-                    isMenber = 1;
-                }
-            }
-
-            gtk_combo_box_text_append_text(cbt_ports, ports[i]);
-            free(ports[i]);
-        }
-    }
-    if (!isMenber && entry != NULL)
-    {
-        gtk_entry_set_text(entry, "");
-    }
-    return n;
-}
-
 // run in gtk_main() environment
-
 gboolean actualize_scrol(gpointer data)
 {
     double value;
@@ -255,31 +208,54 @@ void on_button_connect_clicked(GtkButton *button, gpointer user_data)
 void on_fb_screen_font_set(GtkFontButton *font_button, gpointer data)
 {
     const gchar *font;
-    char *str_number;
+    char f[60] = {0};
     gchar cssText[100] = {0};
-    gchar str_font[70] = {0};
-    PangoFontDescription *pfd;
+    struct CssFont cssFont;
+    char style[30] = "";
+    char weight[30] = "";
 
-    font = gtk_font_button_get_font_name(font_button);
-    str_number = strrchr(font, ' ');
-    strncpy(str_font, font, str_number - font);
+    GtkFontChooser *chooser = GTK_FONT_CHOOSER(font_button);
+    font = gtk_font_chooser_get_font(chooser);
 
-    sprintf(cssText, ".TextScreen{font:%spt %s;}", str_number + 1, str_font);
+    strcpy(f, font);
+
+    int n = get_data_font(f, &cssFont);
+
+    if (n < 2)
+    {
+        error("error getting font");
+        return;
+    }
+
+    if (cssFont.style != NULL)
+    {
+        sprintf(style, "font-style:%s;", cssFont.style);
+    }
+    if (cssFont.weight != NULL)
+    {
+        sprintf(weight, "font-weight:%s;", cssFont.weight);
+    }
+
+    sprintf(cssText, ".TextScreen{font-size:%spt;font-family:%s;%s%s}",
+            cssFont.size, cssFont.famyly, style, weight);
+
     printf("%s\n", cssText);
+
     gtk_css_provider_load_from_data(provid_font, cssText, -1, NULL);
     css_set(provid_font, (GtkWidget *)tv_screen);
 }
 
 void on_cbutton_font_color_set(GtkColorButton *cbutton, gpointer user_data)
 {
-    GdkColor color;
-    gchar cssText[50] = {0};
+    gchar cssText[100] = {0};
+    GtkColorChooser *colorChooser = GTK_COLOR_CHOOSER(cbutton);
 
-    gtk_color_button_get_color(cbutton, &color);
+    GdkRGBA rgba;
 
-    sprintf(cssText, ".TextScreen text{color:rgb(%d,%d,%d);}",
-            (255 * color.red) / 65535, (255 * color.green) / 65535, (255 * color.blue) / 65535);
-    //sprintf(cssText, ".TextScreen text{color:#%06x}", color.pixel);
+    gtk_color_chooser_get_rgba(colorChooser, &rgba);
+
+    sprintf(cssText, ".TextScreen text{color:rgba(%.1lf%%,%.1lf%%,%.1lf%%,%.1lf);}",
+            rgba.red*100, rgba.green*100, rgba.blue*100, rgba.alpha);
 
     printf("%s\n", cssText);
     gtk_css_provider_load_from_data(provid_color, cssText, -1, NULL);
@@ -289,20 +265,18 @@ void on_cbutton_font_color_set(GtkColorButton *cbutton, gpointer user_data)
 void on_entry_port_icon_press(GtkEntry *entry, GtkEntryIconPosition icon_pos,
                               GdkEvent *event, gpointer user_data)
 {
-  
     if (icon_pos == GTK_ENTRY_ICON_PRIMARY)
     {
         refresh_ports(cbt_ports, entry);
     }
 }
 
-char *getRegistros_intervalo(int data_inicial, int data_final);
-
 int main(int argc, char *argv[])
 {
 
     gtk_init(&argc, &argv);
 
+    setlocale(LC_NUMERIC, "en_US.utf8");
     const int buf_max = 256;
     pid_t fistfork;
 
@@ -356,12 +330,4 @@ int main(int argc, char *argv[])
     gtk_widget_show(window);
     gtk_main();
     return EXIT_SUCCESS;
-}
-
-void css_set(GtkCssProvider *cssProvider, GtkWidget *g_widgete)
-{
-    GtkStyleContext *context = gtk_widget_get_style_context(g_widgete);
-
-    gtk_style_context_add_provider(context, GTK_STYLE_PROVIDER(cssProvider),
-                                   GTK_STYLE_PROVIDER_PRIORITY_USER);
 }

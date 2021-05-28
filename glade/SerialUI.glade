@@ -36,7 +36,7 @@
                 <property name="level">GTK_FONT_CHOOSER_LEVEL_STYLE | GTK_FONT_CHOOSER_LEVEL_SIZE | GTK_FONT_CHOOSER_LEVEL_VARIATIONS | GTK_FONT_CHOOSER_LEVEL_FEATURES | GTK_FONT_CHOOSER_LEVEL_FAMILY</property>
                 <property name="preview_text"/>
                 <property name="show_preview_entry">False</property>
-                <signal name="font-set" handler="on_fb_screen_font_set" object="tv_screen" after="yes" swapped="no"/>
+                <signal name="font-set" handler="on_fb_screen_font_set" swapped="no"/>
               </object>
               <packing>
                 <property name="position">0</property>
