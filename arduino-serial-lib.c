@@ -17,6 +17,8 @@
 #include <string.h>
 #include <stdlib.h>
 
+uint8_t is_color_mode = 0;
+
 // uncomment this to debug reads
 //#define SERIALPORTDEBUG
 
@@ -92,8 +94,7 @@ int serialport_init(const char *serialport, int baud)
 
     //toptions.c_cflag &= ~HUPCL; // disable hang-up-on-close to avoid reset
 
-    toptions.c_cflag |= CREAD;                   //| CLOCAL;
-    toptions.c_cflag &= ~CLOCAL;                 // turn on READ & ignore ctrl lines
+    toptions.c_cflag |= CREAD | CLOCAL;          // turn on READ & ignore ctrl lines
     toptions.c_iflag &= ~(IXON | IXOFF | IXANY); // turn off s/w flow ctrl
 
     // Disable any special handling of received bytes
@@ -105,7 +106,7 @@ int serialport_init(const char *serialport, int baud)
 
     // see: http://unixwiz.net/techtips/termios-vmin-vtime.html
 
-    toptions.c_cc[VMIN] = 30;
+    toptions.c_cc[VMIN] = 50;
     toptions.c_cc[VTIME] = 1; //needed to solve problems like \r\n for example
 
     tcsetattr(fd, TCSANOW, &toptions);
@@ -145,20 +146,27 @@ int serialport_write(int fd, const char *str)
     }
     return 0;
 }
+
+//0 or 1 (false or true)
+void serialport_color_mode(uint8_t color_mode)
+{
+    is_color_mode = color_mode;
+}
+
 /*
     Blocks the process, until it has characters.
-    Retorna nulo em caso de erro, ou uma string vazia caso se perca a conexão usb.
+    Returns null in case of an error, or an empty string if the usb connection is lost.
     If all goes well it returns to the statically allocated buffer;
 */
 
 char *serialport_read(int fd)
 {
-    static char buf[33];
+    static char buf[60];
 
     int n = 0;
-
     int i = 0;
-    n = read(fd, buf, 30);
+
+    n = read(fd, buf, 50);
 
     if (n < 0)
     {
@@ -166,19 +174,52 @@ char *serialport_read(int fd)
     }
 
     // for the caracter \r\n which uses two bytes
-    if (n == 30)
+    if (n == 50)
     {
-        if (buf[29] == '\r')
+        if (buf[49] == '\r')
         {
-            n += read(fd, (buf + 29), 1);
+            n += read(fd, &buf[50], 1);
+        }
+        else if (is_color_mode)
+        {
+            //it is necessary to take care not to break the special color strings;
+
+            for (i = 44; i < 47; i++)
+            {
+                if (buf[i] == '\033')
+                {
+
+                    if (strspn(&buf[i], LOG_COLOR_INIT) == 4)
+                    {
+                        n += read(fd, &buf[50], i - 43);
+                    }
+                    break;
+                }
+            }
+
+            if (n <= 50)
+            {
+                for (i = 47; i < 50; i++)
+                {
+                    if (buf[i] == '\033')
+                    {
+                        n += read(fd, &buf[50], i - 46);
+                        break;
+                    }
+                }
+            
+                if (buf[i + 3] == ';' && n > 50)
+                {
+                    n += read(fd, &buf[i + 4], 3);
+                }
+            }
         }
     }
 
     buf[n] = '\0';
-    
+
     return buf;
 }
-
 
 int serialport_flush(int fd)
 {

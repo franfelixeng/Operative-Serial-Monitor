@@ -2,6 +2,13 @@
     "files.associations": {
         "gtk.h": "c",
         "limits": "cpp",
-        "type_traits": "c"
+        "type_traits": "c",
+        "array": "c",
+        "deque": "c",
+        "string": "c",
+        "unordered_map": "c",
+        "vector": "c",
+        "string_view": "c",
+        "initializer_list": "c"
     }
 }

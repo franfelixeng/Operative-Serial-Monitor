@@ -14,25 +14,20 @@
 GtkWidget *window;
 GtkWidget *im_connect;
 GtkWidget *im_disconnect;
-
 GtkComboBoxText *cbt_ports;
 GtkComboBoxText *cbt_baudrate;
 GtkButton *button_connect;
 GtkTextView *tv_screen;
 GtkTextView *tv_send;
 GtkTextBuffer *buffer_screen;
-GtkScrolledWindow *scrolledw_screen;
 GtkAdjustment *scrol_adjustment_screen;
-GtkActionBar *ab_configs;
-GtkActionBar *ab_send;
 GtkBuilder *builder;
-
 GtkCssProvider *provid_font;
 GtkCssProvider *provid_color;
 
 gboolean flag_auto_scroll = False;
-
-int fd = -1;
+gboolean flag_log_color = False;
+int fd_port = -1;
 int baudrate = 0;
 pthread_t ref_reading;
 
@@ -47,10 +42,49 @@ gboolean actualize_scrol(gpointer data)
 
 gboolean on_read_usb(gpointer data)
 {
-
+    struct TextToPrint *to_print = (struct TextToPrint *)data;
+    GtkTextMark *mark;
     GtkTextIter iter;
+    char log_color[15] = {0};
+
     gtk_text_buffer_get_end_iter(buffer_screen, &iter);
-    gtk_text_buffer_insert(buffer_screen, &iter, (char *)data, -1);
+
+    if (to_print->color == NULL)
+    {
+        gtk_text_buffer_insert(buffer_screen, &iter, to_print->text, -1);
+        free(to_print->text);
+        free(to_print);
+    }
+    else
+    {
+        if (strcmp(to_print->color, LOG_COLOR_RED) == 0)
+        {
+            strcpy(log_color, "log-red");
+        }
+        else if (strcmp(to_print->color, LOG_COLOR_YELLOW) == 0)
+        {
+            strcpy(log_color, "log-yellow");
+        }
+        else if (strcmp(to_print->color, LOG_COLOR_GREEN) == 0)
+        {
+            strcpy(log_color, "log-green");
+        }
+        else if (strcmp(to_print->color, LOG_COLOR_CYAN) == 0)
+        {
+            strcpy(log_color, "log-cyan");
+        }
+        else if (strcmp(to_print->color, LOG_COLOR_GRAY) == 0)
+        {
+            strcpy(log_color, "log-gray");
+        }
+
+        gtk_text_buffer_insert_with_tags_by_name(buffer_screen, &iter, to_print->text,
+                                                 -1, log_color, NULL);
+
+        free(to_print->text);
+        free(to_print->color);
+        free(to_print);
+    }
 
     if (flag_auto_scroll)
     {
@@ -66,22 +100,106 @@ gboolean on_disconnect(gpointer data)
     gtk_button_set_label(button_connect, "connect");
 }
 
+gboolean treat_to_print(char *text, char *color, gboolean started)
+{
+    char *init_color;
+    char *end_color;
+    size_t size;
+    struct TextToPrint *to_print;
+    if (started)
+    {
+        if (strlen(text) == 0)
+        {
+            return True;
+        }
+
+        to_print = malloc(sizeof(struct TextToPrint));
+        to_print->text = NULL;
+        to_print->color = NULL;
+
+        if ((end_color = strstr(text, LOG_RESET_COLOR)) != NULL)
+        {
+
+            size = end_color - text;
+            to_print->text = calloc((size + 1), sizeof(char));
+            to_print->color = malloc(3 * sizeof(char));
+            strncpy(to_print->text, text, size);
+            strcpy(to_print->color, color);
+            g_idle_add(on_read_usb, to_print);
+            return treat_to_print(end_color + strlen(LOG_RESET_COLOR), color, False);
+        }
+        else
+        {
+            size = strlen(text);
+            to_print->text = calloc((size + 1), sizeof(char));
+            to_print->color = malloc(3 * sizeof(char));
+            strncpy(to_print->text, text, size);
+            strcpy(to_print->color, color);
+            g_idle_add(on_read_usb, to_print);
+            return True;
+        }
+    }
+    else
+    {
+
+        if (strlen(text) == 0)
+        {
+            return False;
+        }
+
+        if ((init_color = strstr(text, LOG_COLOR_INIT)) != NULL)
+        {
+            if ((size = init_color - text) == 0)
+            {
+                strncpy(color, init_color + strlen(LOG_COLOR_INIT), 2);
+                return treat_to_print(strchr(init_color + 1, 'm') + 1, color, True);
+            }
+            to_print = malloc(sizeof(struct TextToPrint));
+            to_print->color = NULL;
+            to_print->text = calloc((size + 1), sizeof(char));
+            strncpy(to_print->text, text, size);
+            g_idle_add(on_read_usb, to_print);
+            return treat_to_print(init_color, color, False);
+        }
+        else
+        {
+            to_print = malloc(sizeof(struct TextToPrint));
+            to_print->color = NULL;
+            size = strlen(text);
+            to_print->text = calloc((size + 1), sizeof(char));
+            strncpy(to_print->text, text, size);
+            g_idle_add(on_read_usb, to_print);
+            return False;
+        }
+    }
+}
+
 void *thread_reading(void *arg)
 {
+
+    struct TextToPrint *to_print;
+
     char *text;
+    char *complete_text;
     int n;
+    char *init_color;
+    char *end_color;
+    char color[3] = {0};
+    int size;
+    gboolean started_color = False;
+    char *dup2;
+
     for (;;)
     {
-        text = serialport_read(fd);
+        text = serialport_read(fd_port);
 
         if (text == NULL) // error or press disconnect
         {
-            if (fd != -1)
+            if (fd_port != -1)
             {
-                serialport_close(fd);
-                fd = -1;
+                serialport_close(fd_port);
+                fd_port = -1;
             }
-            //TODO put message
             printf("disconnected\n");
             ref_reading = 0;
             g_idle_add(on_disconnect, NULL);
@@ -89,10 +207,10 @@ void *thread_reading(void *arg)
         }
         if (text[0] == '\0') //disconnected board
         {
-            if (fd != -1)
+            if (fd_port != -1)
             {
-                serialport_close(fd);
-                fd = -1;
+                serialport_close(fd_port);
+                fd_port = -1;
             }
             printf("disconnected\n");
             ref_reading = 0;
@@ -101,7 +219,22 @@ void *thread_reading(void *arg)
         }
         else
         {
-            g_idle_add(on_read_usb, text);
+
+            if (flag_log_color)
+            {
+
+                started_color = treat_to_print(text, color, started_color);
+
+            }
+            else
+            {
+                to_print = malloc(sizeof(struct TextToPrint));
+                to_print->text = NULL;
+                to_print->color = NULL;
+                to_print->text = calloc(strlen(text) + 1, sizeof(char));
+                strcpy(to_print->text, text);
+                g_idle_add(on_read_usb, to_print);
+            }
         }
     }
 }
@@ -111,45 +244,62 @@ void on_cb_auto_scroll_toggled(GtkToggleButton *togglebutton, gpointer user_data
     flag_auto_scroll = gtk_toggle_button_get_active(togglebutton);
 }
 
+void on_cb_log_color_toggled(GtkToggleButton *togglebutton, gpointer user_data)
+{
+    flag_log_color = gtk_toggle_button_get_active(togglebutton);
+    serialport_color_mode(flag_log_color);
+}
+
 void on_tv_send_by_return()
 {
     GtkTextBuffer *tb;
     GtkTextIter iter_start;
     GtkTextIter iter_end;
     char *text;
-    if (fd > 0)
+    if (fd_port > 0)
     {
         tb = gtk_text_view_get_buffer(tv_send);
         gtk_text_buffer_get_start_iter(tb, &iter_start);
         gtk_text_buffer_get_end_iter(tb, &iter_end);
         text = gtk_text_buffer_get_text(tb, &iter_start, &iter_end, True);
-        serialport_write(fd, text);
+        serialport_write(fd_port, text);
         gtk_text_buffer_set_text(tb, "", 0);
     }
 }
 
-void on_button_send_clicked()
+void on_button_send_clicked(GtkButton *button, gpointer tv_send_data)
 {
     GtkTextBuffer *tb;
     GtkTextIter iter_start;
     GtkTextIter iter_end;
     char *text;
-    if (fd > 0)
+    if (fd_port > 0)
     {
-        tb = gtk_text_view_get_buffer(tv_send);
+        tb = gtk_text_view_get_buffer((GtkTextView *)tv_send_data);
         gtk_text_buffer_get_start_iter(tb, &iter_start);
         gtk_text_buffer_get_end_iter(tb, &iter_end);
         text = gtk_text_buffer_get_text(tb, &iter_start, &iter_end, True);
-        serialport_write(fd, text);
-        gtk_text_buffer_set_text(tb, "", 0);
+        serialport_write(fd_port, text);
+        gtk_text_buffer_delete(tb, &iter_start, &iter_end);
     }
 }
 
-void on_button_connect_clicked(GtkButton *button, gpointer user_data)
+void on_button_clear_clicked(GtkButton *button, gpointer tv_screen_data)
 {
-    if (fd == -1)
+    GtkTextBuffer *buffer = gtk_text_view_get_buffer((GtkTextView *)tv_screen_data);
+    GtkTextIter iter_start;
+    GtkTextIter iter_end;
+    gtk_text_buffer_get_start_iter(buffer, &iter_start);
+    gtk_text_buffer_get_end_iter(buffer, &iter_end);
+
+    gtk_text_buffer_delete(buffer, &iter_start, &iter_end);
+}
+
+void on_button_connect_clicked(GtkButton *button, gpointer cbt_port_entry)
+{
+    if (fd_port == -1)
     {
-        GtkEntry *entry = (GtkEntry *)user_data;
+        GtkEntry *entry = (GtkEntry *)cbt_port_entry;
 
         char serial_port[30] = "/dev/";
         char *p = NULL;
@@ -177,8 +327,8 @@ void on_button_connect_clicked(GtkButton *button, gpointer user_data)
         strncat(serial_port, p, 20);
         baud = (int)strtol(str_baud, (char **)strchr(str_baud, ' '), 10);
 
-        fd = serialport_init(serial_port, baud);
-        if (fd == -1)
+        fd_port = serialport_init(serial_port, baud);
+        if (fd_port == -1)
         {
             error("couldn't open port");
             return;
@@ -190,22 +340,21 @@ void on_button_connect_clicked(GtkButton *button, gpointer user_data)
 
         pthread_create(&ref_reading, NULL, thread_reading, NULL);
     }
-    else if (fd > 0)
+    else if (fd_port > 0)
     {
         pthread_cancel(ref_reading);
 
-        if (serialport_close(fd) != 0)
+        if (serialport_close(fd_port) != 0)
         {
-            error("don't close");
+            error("don't close port");
         }
-        fd = -1;
-        gtk_combo_box_text_remove_all(cbt_ports);
+        fd_port = -1;
         gtk_button_set_image(button_connect, im_connect);
         gtk_button_set_label(button_connect, "connect");
     }
 }
 
-void on_fb_screen_font_set(GtkFontButton *font_button, gpointer data)
+void on_fb_screen_font_set(GtkFontButton *font_button, gpointer tv_screen_data)
 {
     const gchar *font;
     char f[60] = {0};
@@ -242,10 +391,10 @@ void on_fb_screen_font_set(GtkFontButton *font_button, gpointer data)
     printf("%s\n", cssText);
 
     gtk_css_provider_load_from_data(provid_font, cssText, -1, NULL);
-    css_set(provid_font, (GtkWidget *)tv_screen);
+    css_set(provid_font, (GtkWidget *)tv_screen_data);
 }
 
-void on_cbutton_font_color_set(GtkColorButton *cbutton, gpointer user_data)
+void on_cbutton_font_color_set(GtkColorButton *cbutton, gpointer tv_screen_data)
 {
     gchar cssText[100] = {0};
     GtkColorChooser *colorChooser = GTK_COLOR_CHOOSER(cbutton);
@@ -255,25 +404,24 @@ void on_cbutton_font_color_set(GtkColorButton *cbutton, gpointer user_data)
     gtk_color_chooser_get_rgba(colorChooser, &rgba);
 
     sprintf(cssText, ".TextScreen text{color:rgba(%.1lf%%,%.1lf%%,%.1lf%%,%.1lf);}",
-            rgba.red*100, rgba.green*100, rgba.blue*100, rgba.alpha);
+            rgba.red * 100, rgba.green * 100, rgba.blue * 100, rgba.alpha);
 
     printf("%s\n", cssText);
     gtk_css_provider_load_from_data(provid_color, cssText, -1, NULL);
-    css_set(provid_color, (GtkWidget *)tv_screen);
+    css_set(provid_color, (GtkWidget *)tv_screen_data);
 }
 
 void on_entry_port_icon_press(GtkEntry *entry, GtkEntryIconPosition icon_pos,
-                              GdkEvent *event, gpointer user_data)
+                              GdkEvent *event, gpointer cbt_ports_data)
 {
     if (icon_pos == GTK_ENTRY_ICON_PRIMARY)
     {
-        refresh_ports(cbt_ports, entry);
+        refresh_ports((GtkComboBoxText *)cbt_ports_data, entry);
     }
 }
 
 int main(int argc, char *argv[])
 {
-
     gtk_init(&argc, &argv);
 
     setlocale(LC_NUMERIC, "en_US.utf8");
@@ -293,22 +441,29 @@ int main(int argc, char *argv[])
 
     window = GTK_WIDGET(gtk_builder_get_object(builder, "w_fist"));
 
-    scrolledw_screen = (GtkScrolledWindow *)GTK_WIDGET(gtk_builder_get_object(builder, "scrolledw_screen"));
+    GtkScrolledWindow *scrolledw_screen = (GtkScrolledWindow *)GTK_WIDGET(gtk_builder_get_object(builder, "scrolledw_screen"));
     scrol_adjustment_screen = (GtkAdjustment *)gtk_scrolled_window_get_vadjustment(scrolledw_screen);
 
     tv_screen = (GtkTextView *)GTK_WIDGET(gtk_builder_get_object(builder, "tv_screen"));
     tv_send = (GtkTextView *)GTK_WIDGET(gtk_builder_get_object(builder, "tv_send"));
-    buffer_screen = gtk_text_view_get_buffer(tv_screen);
 
     cbt_ports = (GtkComboBoxText *)GTK_WIDGET(gtk_builder_get_object(builder, "cbt_ports"));
     cbt_baudrate = (GtkComboBoxText *)GTK_WIDGET(gtk_builder_get_object(builder, "cbt_baud_rate"));
     button_connect = (GtkButton *)GTK_WIDGET(gtk_builder_get_object(builder, "button_connect"));
 
-    ab_configs = (GtkActionBar *)GTK_WIDGET(gtk_builder_get_object(builder, "ab_configs"));
-    ab_send = (GtkActionBar *)GTK_WIDGET(gtk_builder_get_object(builder, "ab_send"));
+    GtkActionBar *ab_configs = (GtkActionBar *)GTK_WIDGET(gtk_builder_get_object(builder, "ab_configs"));
+    GtkActionBar *ab_send = (GtkActionBar *)GTK_WIDGET(gtk_builder_get_object(builder, "ab_send"));
 
     im_connect = GTK_WIDGET(gtk_builder_get_object(builder, "im_connect"));
     im_disconnect = GTK_WIDGET(gtk_builder_get_object(builder, "im_disconnect"));
+
+    buffer_screen = gtk_text_view_get_buffer(tv_screen);
+
+    gtk_text_buffer_create_tag(buffer_screen, "log-red", "foreground", "red", NULL);
+    gtk_text_buffer_create_tag(buffer_screen, "log-yellow", "foreground", "#cccc00", NULL);
+    gtk_text_buffer_create_tag(buffer_screen, "log-green", "foreground", "green", NULL);
+    gtk_text_buffer_create_tag(buffer_screen, "log-cyan", "foreground", "#00cccc", NULL);
+    gtk_text_buffer_create_tag(buffer_screen, "log-gray", "foreground", "gray", NULL);
 
     gtk_builder_connect_signals(builder, NULL);
 

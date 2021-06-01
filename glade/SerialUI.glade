@@ -36,7 +36,7 @@
                 <property name="level">GTK_FONT_CHOOSER_LEVEL_STYLE | GTK_FONT_CHOOSER_LEVEL_SIZE | GTK_FONT_CHOOSER_LEVEL_VARIATIONS | GTK_FONT_CHOOSER_LEVEL_FEATURES | GTK_FONT_CHOOSER_LEVEL_FAMILY</property>
                 <property name="preview_text"/>
                 <property name="show_preview_entry">False</property>
-                <signal name="font-set" handler="on_fb_screen_font_set" swapped="no"/>
+                <signal name="font-set" handler="on_fb_screen_font_set" object="tv_screen" swapped="no"/>
               </object>
               <packing>
                 <property name="position">0</property>
@@ -49,7 +49,7 @@
                 <property name="receives_default">True</property>
                 <property name="double_buffered">False</property>
                 <property name="rgba">rgb(0,0,0)</property>
-                <signal name="color-set" handler="on_cbutton_font_color_set" swapped="no"/>
+                <signal name="color-set" handler="on_cbutton_font_color_set" object="tv_screen" swapped="no"/>
               </object>
               <packing>
                 <property name="position">1</property>
@@ -67,6 +67,31 @@
               </object>
               <packing>
                 <property name="position">2</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkCheckButton" id="cb_log_color">
+                <property name="label" translatable="yes">LogColor</property>
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="receives_default">False</property>
+                <property name="draw_indicator">True</property>
+                <signal name="toggled" handler="on_cb_log_color_toggled" swapped="no"/>
+              </object>
+              <packing>
+                <property name="position">3</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkButton" id="button_clear">
+                <property name="label" translatable="yes">Clear</property>
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="receives_default">True</property>
+                <signal name="clicked" handler="on_button_clear_clicked" object="tv_screen" swapped="no"/>
+              </object>
+              <packing>
+                <property name="position">4</property>
               </packing>
             </child>
             <style>
@@ -126,7 +151,7 @@
                 <property name="receives_default">False</property>
                 <property name="double_buffered">False</property>
                 <property name="valign">center</property>
-                <signal name="clicked" handler="on_button_send_clicked" swapped="no"/>
+                <signal name="clicked" handler="on_button_send_clicked" object="tv_send" swapped="no"/>
               </object>
               <packing>
                 <property name="pack_type">end</property>
@@ -202,7 +227,7 @@
                     <property name="secondary_icon_name">dialog-input-devices</property>
                     <property name="primary_icon_tooltip_text" translatable="yes">refresh</property>
                     <property name="placeholder_text" translatable="yes">PORT</property>
-                    <signal name="icon-press" handler="on_entry_port_icon_press" swapped="no"/>
+                    <signal name="icon-press" handler="on_entry_port_icon_press" object="cbt_ports" swapped="no"/>
                   </object>
                 </child>
               </object>

@@ -12,6 +12,13 @@ struct CssFont
     char* weight;
 };
 
+struct TextToPrint
+{
+    char* text;
+    char* color;
+};
+
+
 int refresh_ports(GtkComboBoxText *cbt, GtkEntry *entry);
 int get_data_font(char* text_font, struct CssFont* cssFont);
 void css_set(GtkCssProvider *cssProvider, GtkWidget *g_widgete);
