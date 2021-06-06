@@ -8,8 +8,8 @@
 #include <pthread.h>
 #include <fcntl.h>
 #include <locale.h>
-#include "arduino-serial-lib.h"
-#include "helper.h"
+#include "src/arduino-serial-lib.h"
+#include "src/helper.h"
 
 GtkWidget *window;
 GtkWidget *im_connect;
@@ -199,7 +199,7 @@ void *thread_reading(void *arg)
             {
                 serialport_close(fd_port);
                 fd_port = -1;
-            }
+            } 
             printf("disconnected\n");
             ref_reading = 0;
             g_idle_add(on_disconnect, NULL);
