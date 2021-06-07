@@ -7,15 +7,13 @@
 			"command": "/usr/bin/gcc",
 			"args": [
 				"-g",
-				"`pkg-config",
-				"--cflags",
-				"gtk+-3.0`",
 				"-o",
 				"${workspaceFolder}/.build/main",
 				"${workspaceFolder}/main.c",
 				"${workspaceFolder}/src/arduino-serial-lib.c",
 				"${workspaceFolder}/src/helper.c",
 				"`pkg-config",
+				"--cflags",
 				"--libs",
 				"gtk+-3.0`",
 				"-rdynamic"
@@ -37,15 +35,13 @@
 			"label": "C/C++: simple build",
 			"command": "/usr/bin/gcc",
 			"args": [
-				"`pkg-config",
-				"--cflags",
-				"gtk+-3.0`",
 				"-o",
 				"${workspaceFolder}/.build/main",
 				"${workspaceFolder}/main.c",
 				"${workspaceFolder}/src/arduino-serial-lib.c",
 				"${workspaceFolder}/src/helper.c",
 				"`pkg-config",
+				"--cflags",
 				"--libs",
 				"gtk+-3.0`",
 				"-rdynamic"
